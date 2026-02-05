@@ -1,0 +1,340 @@
+{
+    "name": "Lead Capture & CRM Automation",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "lead-capture",
+                "responseMode": "responseNode",
+                "options": {
+                    "responseContentType": "application/json"
+                }
+            },
+            "id": "webhook-trigger",
+            "name": "Webhook - Lead Capture",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [250, 300],
+            "webhookId": "lead-capture-webhook"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Validate incoming lead data\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  // Handle both direct JSON and nested body from webhook\n  const data = item.json?.body ?? item.json;\n  const errors = [];\n  \n  // Check required fields\n  const name = data.name ? String(data.name).trim() : '';\n  const email = data.email ? String(data.email).trim() : '';\n  \n  if (!name) {\n    errors.push('Name is required');\n  }\n  \n  if (!email) {\n    errors.push('Email is required');\n  } else {\n    // Basic email validation\n    const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n    if (!emailRegex.test(email)) {\n      errors.push('Invalid email format');\n    }\n  }\n  \n  // Output validated data with validation metadata\n  results.push({\n    json: {\n      name: name,\n      email: email,\n      phone: data.phone ? String(data.phone).trim() : '',\n      company: data.company ? String(data.company).trim() : '',\n      source: data.source ? String(data.source).trim() : 'Website',\n      message: data.message ? String(data.message).trim() : '',\n      utm_source: data.utm_source || '',\n      utm_medium: data.utm_medium || '',\n      utm_campaign: data.utm_campaign || '',\n      _validation: {\n        isValid: errors.length === 0,\n        errors: errors\n      }\n    }\n  });\n}\n\nreturn results;"
+            },
+            "id": "validate-input",
+            "name": "Validate Input",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [470, 300]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "validation-check",
+                            "leftValue": "={{ $json._validation.isValid }}",
+                            "rightValue": true,
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "if-valid",
+            "name": "IF - Valid Data",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [690, 300]
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={\n  \"status\": \"error\",\n  \"message\": \"Validation failed\",\n  \"errors\": {{ JSON.stringify($json._validation.errors) }}\n}",
+                "options": {
+                    "responseCode": 400
+                }
+            },
+            "id": "respond-error",
+            "name": "Respond - Validation Error",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1,
+            "position": [910, 480]
+        },
+        {
+            "parameters": {
+                "jsCode": "// Process and enrich lead data\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  \n  // Generate unique lead ID\n  const timestamp = Date.now();\n  const randomPart = Math.random().toString(36).substring(2, 8);\n  const leadId = `lead_${timestamp}_${randomPart}`;\n  \n  // Create processed lead object\n  const processedLead = {\n    leadId: leadId,\n    name: data.name || '',\n    email: (data.email || '').toLowerCase(),\n    source: data.source || 'Website',\n    phone: data.phone || '',\n    company: data.company || '',\n    message: data.message || '',\n    status: 'new',\n    createdAt: new Date().toISOString(),\n    createdDate: new Date().toLocaleDateString('en-US'),\n    createdTime: new Date().toLocaleTimeString('en-US'),\n    utmSource: data.utm_source || '',\n    utmMedium: data.utm_medium || '',\n    utmCampaign: data.utm_campaign || ''\n  };\n  \n  results.push({ json: processedLead });\n}\n\nreturn results;"
+            },
+            "id": "process-data",
+            "name": "Process Lead Data",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [910, 160]
+        },
+        {
+            "parameters": {
+                "operation": "append",
+                "documentId": {
+                    "__rl": true,
+                    "value": "",
+                    "mode": "list",
+                    "cachedResultName": "SELECT YOUR SPREADSHEET"
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "value": "gid=0",
+                    "mode": "list",
+                    "cachedResultName": "Sheet1"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "Lead ID": "={{ $json.leadId }}",
+                        "Name": "={{ $json.name }}",
+                        "Email": "={{ $json.email }}",
+                        "Source": "={{ $json.source }}",
+                        "Phone": "={{ $json.phone }}",
+                        "Company": "={{ $json.company }}",
+                        "Message": "={{ $json.message }}",
+                        "Status": "={{ $json.status }}",
+                        "Created At": "={{ $json.createdAt }}"
+                    },
+                    "matchingColumns": [],
+                    "schema": [
+                        {"id": "Lead ID", "displayName": "Lead ID", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": false},
+                        {"id": "Name", "displayName": "Name", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": false},
+                        {"id": "Email", "displayName": "Email", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": false},
+                        {"id": "Source", "displayName": "Source", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": false},
+                        {"id": "Phone", "displayName": "Phone", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": false},
+                        {"id": "Company", "displayName": "Company", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": false},
+                        {"id": "Message", "displayName": "Message", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": false},
+                        {"id": "Status", "displayName": "Status", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": false},
+                        {"id": "Created At", "displayName": "Created At", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": false}
+                    ]
+                },
+                "options": {}
+            },
+            "id": "google-sheets-leads",
+            "name": "Google Sheets - Add Lead",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4.5,
+            "position": [1130, 160],
+            "onError": "continueRegularOutput",
+            "credentials": {
+                "googleSheetsOAuth2Api": {
+                    "id": "",
+                    "name": "Google Sheets account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "create",
+                "base": {
+                    "__rl": true,
+                    "value": "",
+                    "mode": "list",
+                    "cachedResultName": "SELECT YOUR BASE"
+                },
+                "table": {
+                    "__rl": true,
+                    "value": "",
+                    "mode": "list",
+                    "cachedResultName": "SELECT YOUR TABLE"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "Lead ID": "={{ $('Process Lead Data').item.json.leadId }}",
+                        "Name": "={{ $('Process Lead Data').item.json.name }}",
+                        "Email": "={{ $('Process Lead Data').item.json.email }}",
+                        "Source": "={{ $('Process Lead Data').item.json.source }}",
+                        "Phone": "={{ $('Process Lead Data').item.json.phone }}",
+                        "Company": "={{ $('Process Lead Data').item.json.company }}",
+                        "Message": "={{ $('Process Lead Data').item.json.message }}",
+                        "Status": "={{ $('Process Lead Data').item.json.status }}",
+                        "Created At": "={{ $('Process Lead Data').item.json.createdAt.split('T')[0] }}"
+                    }
+                },
+                "options": {
+                    "typecast": true
+                }
+            },
+            "id": "airtable-create",
+            "name": "Airtable - Create Record",
+            "type": "n8n-nodes-base.airtable",
+            "typeVersion": 2.1,
+            "position": [1350, 160],
+            "onError": "continueRegularOutput",
+            "credentials": {
+                "airtableTokenApi": {
+                    "id": "",
+                    "name": "Airtable Personal Access Token account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={\n  \"status\": \"success\",\n  \"message\": \"Lead captured successfully\",\n  \"leadId\": \"{{ $('Process Lead Data').item.json.leadId }}\",\n  \"timestamp\": \"{{ $('Process Lead Data').item.json.createdAt }}\"\n}",
+                "options": {
+                    "responseCode": 200
+                }
+            },
+            "id": "respond-success",
+            "name": "Respond - Success",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1,
+            "position": [1570, 160]
+        },
+        {
+            "parameters": {
+                "content": "## Lead Capture & CRM Automation\n\n### SETUP REQUIRED:\n1. Click 'Google Sheets - Add Lead' node\n2. Select your Google Sheets credential\n3. Click the Document dropdown and select your spreadsheet\n4. Click the Sheet dropdown and select the sheet\n\n5. Click 'Airtable - Create Record' node\n6. Select your Airtable credential\n7. Click the Base dropdown and select your base\n8. Click the Table dropdown and select your table\n\n### Flow:\n1. Webhook receives lead data\n2. Validation checks required fields\n3. Processing cleans and enriches data\n4. Google Sheets stores the lead\n5. Airtable creates the record\n6. Success response sent to form",
+                "height": 400,
+                "width": 380,
+                "color": 4
+            },
+            "id": "sticky-note-main",
+            "name": "Sticky Note - Setup",
+            "type": "n8n-nodes-base.stickyNote",
+            "typeVersion": 1,
+            "position": [-160, 100]
+        },
+        {
+            "parameters": {
+                "content": "## Google Sheet Setup\n\nCreate a Google Sheet with these EXACT column headers in row 1:\n\n| Lead ID | Name | Email | Source | Phone | Company | Message | Status | Created At |\n\nThen select it in the node.",
+                "height": 180,
+                "width": 300,
+                "color": 6
+            },
+            "id": "sticky-note-sheets",
+            "name": "Sticky Note - Sheets",
+            "type": "n8n-nodes-base.stickyNote",
+            "typeVersion": 1,
+            "position": [1080, -80]
+        },
+        {
+            "parameters": {
+                "content": "## Airtable Setup\n\nCreate an Airtable table with these fields:\n- Lead ID (Single line text)\n- Name (Single line text)\n- Email (Email)\n- Source (Single select)\n- Phone (Phone number)\n- Company (Single line text)\n- Message (Long text)\n- Status (Single select: new, contacted, qualified)\n- Created At (Date)",
+                "height": 230,
+                "width": 300,
+                "color": 3
+            },
+            "id": "sticky-note-airtable",
+            "name": "Sticky Note - Airtable",
+            "type": "n8n-nodes-base.stickyNote",
+            "typeVersion": 1,
+            "position": [1300, -80]
+        }
+    ],
+    "connections": {
+        "Webhook - Lead Capture": {
+            "main": [
+                [
+                    {
+                        "node": "Validate Input",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Validate Input": {
+            "main": [
+                [
+                    {
+                        "node": "IF - Valid Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "IF - Valid Data": {
+            "main": [
+                [
+                    {
+                        "node": "Process Lead Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Respond - Validation Error",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Process Lead Data": {
+            "main": [
+                [
+                    {
+                        "node": "Google Sheets - Add Lead",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Google Sheets - Add Lead": {
+            "main": [
+                [
+                    {
+                        "node": "Airtable - Create Record",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Airtable - Create Record": {
+            "main": [
+                [
+                    {
+                        "node": "Respond - Success",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1",
+        "saveManualExecutions": true,
+        "callerPolicy": "workflowsFromSameOwner",
+        "errorWorkflow": ""
+    },
+    "staticData": null,
+    "meta": {
+        "templateCredsSetupCompleted": false,
+        "instanceId": ""
+    },
+    "pinData": {},
+    "versionId": "2.0.0",
+    "triggerCount": 1,
+    "tags": [
+        {
+            "name": "lead-capture",
+            "createdAt": "2024-01-15T00:00:00.000Z",
+            "updatedAt": "2024-01-15T00:00:00.000Z"
+        },
+        {
+            "name": "crm",
+            "createdAt": "2024-01-15T00:00:00.000Z",
+            "updatedAt": "2024-01-15T00:00:00.000Z"
+        }
+    ]
+}

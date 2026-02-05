@@ -1,0 +1,134 @@
+{
+  "description": "Sample payloads for testing the n8n Lead Capture workflow",
+  "version": "1.0.0",
+  "payloads": {
+    "valid_basic": {
+      "description": "Basic valid lead submission",
+      "payload": {
+        "name": "John Doe",
+        "email": "john.doe@example.com",
+        "source": "Website Contact Form"
+      },
+      "expectedStatus": 200,
+      "expectedResult": "success"
+    },
+    "valid_full": {
+      "description": "Valid lead with all optional fields",
+      "payload": {
+        "name": "Jane Smith",
+        "email": "jane.smith@company.com",
+        "source": "Landing Page - Spring Campaign",
+        "phone": "+1-555-123-4567",
+        "company": "Acme Corporation",
+        "message": "Interested in your enterprise solution. Please contact me.",
+        "utm_source": "google",
+        "utm_medium": "cpc",
+        "utm_campaign": "spring_promo"
+      },
+      "expectedStatus": 200,
+      "expectedResult": "success"
+    },
+    "valid_international": {
+      "description": "Valid lead with international characters",
+      "payload": {
+        "name": "José García-López",
+        "email": "jose.garcia@empresa.es",
+        "source": "Campaña de Marketing Internacional"
+      },
+      "expectedStatus": 200,
+      "expectedResult": "success"
+    },
+    "valid_whitespace": {
+      "description": "Valid lead with extra whitespace (should be trimmed)",
+      "payload": {
+        "name": "  Sarah Connor  ",
+        "email": "  SARAH@FUTURE.COM  ",
+        "source": "  Website  "
+      },
+      "expectedStatus": 200,
+      "expectedResult": "success",
+      "notes": "Name and email should be trimmed, email lowercased"
+    },
+    "invalid_missing_name": {
+      "description": "Invalid - missing required name field",
+      "payload": {
+        "email": "test@example.com",
+        "source": "Test"
+      },
+      "expectedStatus": 400,
+      "expectedResult": "error",
+      "expectedError": "Name is required"
+    },
+    "invalid_missing_email": {
+      "description": "Invalid - missing required email field",
+      "payload": {
+        "name": "Test User",
+        "source": "Test"
+      },
+      "expectedStatus": 400,
+      "expectedResult": "error",
+      "expectedError": "Email is required"
+    },
+    "invalid_empty_name": {
+      "description": "Invalid - empty name field",
+      "payload": {
+        "name": "",
+        "email": "test@example.com",
+        "source": "Test"
+      },
+      "expectedStatus": 400,
+      "expectedResult": "error",
+      "expectedError": "Name is required"
+    },
+    "invalid_empty_email": {
+      "description": "Invalid - empty email field",
+      "payload": {
+        "name": "Test User",
+        "email": "",
+        "source": "Test"
+      },
+      "expectedStatus": 400,
+      "expectedResult": "error",
+      "expectedError": "Email is required"
+    },
+    "invalid_email_format": {
+      "description": "Invalid - malformed email address",
+      "payload": {
+        "name": "Test User",
+        "email": "not-an-email",
+        "source": "Test"
+      },
+      "expectedStatus": 400,
+      "expectedResult": "error",
+      "expectedError": "Invalid email format"
+    },
+    "invalid_empty_payload": {
+      "description": "Invalid - completely empty payload",
+      "payload": {},
+      "expectedStatus": 400,
+      "expectedResult": "error",
+      "expectedError": "Name is required"
+    },
+    "edge_case_long_text": {
+      "description": "Edge case - very long message field",
+      "payload": {
+        "name": "Test User",
+        "email": "test@example.com",
+        "source": "Website",
+        "message": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. This is a test of handling longer text fields that might come from customer inquiry forms or feedback submissions."
+      },
+      "expectedStatus": 200,
+      "expectedResult": "success"
+    },
+    "edge_case_special_chars": {
+      "description": "Edge case - special characters in name",
+      "payload": {
+        "name": "O'Connor-MacDonald Jr.",
+        "email": "oconnor@test.com",
+        "source": "Partner Referral"
+      },
+      "expectedStatus": 200,
+      "expectedResult": "success"
+    }
+  }
+}
