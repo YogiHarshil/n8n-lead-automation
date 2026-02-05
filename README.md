@@ -1,5 +1,7 @@
 # Lead Capture & CRM Automation
 
+<img width="1474" height="601" alt="image" src="https://github.com/user-attachments/assets/c2aafd5b-e554-4239-9862-f13b6090d5ab" />
+
 > Automated lead capture system that validates, processes, and syncs leads to Google Sheets + Airtable in real-time.
 
 **Version:** 1.0.0
