@@ -5,8 +5,7 @@
 **Version:** 1.0.0
 **Platform:** n8n (v1.0+)
 **License:** MIT
-
-![Workflow Diagram](screenshots/workflow-overview.png)
+**Author:** Harshil
 
 ---
 
@@ -22,9 +21,43 @@
 
 ---
 
+## Workflow Architecture
+
+```
+┌─────────────┐    ┌──────────────┐    ┌─────────────┐    ┌──────────────────┐
+│   Webhook   │───▶│   Validate   │───▶│  IF Valid   │───▶│  Process Lead    │
+│ Lead Capture│    │    Input     │    │    Data     │    │      Data        │
+└─────────────┘    └──────────────┘    └─────────────┘    └──────────────────┘
+                                              │                    │
+                                              ▼                    ▼
+                                    ┌──────────────────┐  ┌──────────────────┐
+                                    │    Respond -     │  │  Google Sheets   │
+                                    │ Validation Error │  │    Add Lead      │
+                                    └──────────────────┘  └──────────────────┘
+                                                                   │
+                                                                   ▼
+                                                          ┌──────────────────┐
+                                                          │    Airtable      │
+                                                          │  Create Record   │
+                                                          └──────────────────┘
+                                                                   │
+                                                                   ▼
+                                                          ┌──────────────────┐
+                                                          │    Respond -     │
+                                                          │     Success      │
+                                                          └──────────────────┘
+```
+
+---
+
 ## Demo
 
-Open `demo/index.html` in your browser to test the workflow with a functional lead capture form.
+Open `demo/index.html` in your browser to test the workflow with a modern lead capture form featuring:
+- Real-time validation
+- Animated UI with floating particles
+- Phone number auto-formatting
+- Success/error notifications
+- Keyboard shortcuts (Ctrl+Enter to submit)
 
 ---
 
@@ -44,6 +77,7 @@ Open `demo/index.html` in your browser to test the workflow with a functional le
 | **Webhook** | Real-time lead ingestion |
 | **Google Sheets** | Lead database & reporting |
 | **Airtable** | CRM-style lead management |
+| **HTML/CSS/JS** | Demo form (vanilla, no frameworks) |
 
 ---
 
@@ -60,15 +94,22 @@ Add these columns to row 1:
 Lead ID | Name | Email | Source | Phone | Company | Message | Status | Created At
 ```
 
-### 3. Configure Nodes
-- Click **Google Sheets** node → Select your spreadsheet
-- Click **Airtable** node → Select your base & table
+### 3. Create Airtable Table
+Create a table with these fields (all as **Single line text** for simplicity):
+```
+Lead ID | Name | Email | Source | Phone | Company | Message | Status | Created At
+```
 
-### 4. Activate & Test
+### 4. Configure Nodes
+- Click **Google Sheets** node → Select your credential & spreadsheet
+- Click **Airtable** node → Select your credential, base & table
+- Enable **Typecast** option in Airtable node for auto field conversion
+
+### 5. Activate & Test
 - Toggle workflow **ON**
-- Copy webhook URL
+- Copy webhook URL from the Webhook node
 - Open `demo/index.html`
-- Submit a test lead
+- Enter webhook URL and submit a test lead
 
 ---
 
@@ -90,6 +131,16 @@ POST /webhook/lead-capture
   "message": "Interested in your services"
 }
 ```
+
+### Required Fields
+- `name` - Lead's full name
+- `email` - Valid email address
+
+### Optional Fields
+- `source` - Lead source (defaults to "Website")
+- `phone` - Phone number
+- `company` - Company name
+- `message` - Additional message
 
 ### Success Response (200)
 ```json
@@ -122,16 +173,14 @@ n8n-lead-automation/
 ├── .gitignore             # Git ignore rules
 ├── demo/
 │   ├── index.html         # Lead capture form UI
-│   ├── style.css          # Responsive styling
+│   ├── style.css          # Responsive styling with animations
 │   └── script.js          # Form logic & API client
 ├── docs/
 │   ├── SETUP.md           # Step-by-step setup guide
 │   └── TESTING.md         # Test cases & debugging
-├── examples/
-│   ├── sample-payloads.json   # Test data payloads
-│   └── curl-commands.md       # API test commands
-└── screenshots/
-    └── workflow-overview.png  # Workflow diagram
+└── examples/
+    ├── sample-payloads.json   # Test data payloads
+    └── curl-commands.md       # API test commands
 ```
 
 ---
@@ -142,18 +191,24 @@ n8n-lead-automation/
 - **Data Enrichment** - Auto-generates Lead ID, timestamps, status
 - **Multi-Destination Sync** - Google Sheets + Airtable simultaneously
 - **Error Handling** - Graceful failures with clear error messages
+- **Typecast Support** - Auto-creates Airtable select options
+- **Modern Demo UI** - Animated form with real-time feedback
 - **Production Ready** - No hardcoded credentials, secure by design
 
 ---
 
-## Use Cases
+## Workflow Nodes
 
-- Website contact forms
-- Landing page lead capture
-- Marketing campaign tracking
-- Event registration
-- Newsletter signups
-- Client inquiry forms
+| Node | Type | Purpose |
+|------|------|---------|
+| Webhook - Lead Capture | Trigger | Receives POST requests |
+| Validate Input | Code | Validates required fields & email |
+| IF - Valid Data | Condition | Routes valid/invalid data |
+| Process Lead Data | Code | Enriches data with ID & timestamps |
+| Google Sheets - Add Lead | Integration | Appends lead to spreadsheet |
+| Airtable - Create Record | Integration | Creates CRM record |
+| Respond - Success | Response | Returns success JSON |
+| Respond - Validation Error | Response | Returns error JSON |
 
 ---
 
@@ -164,6 +219,11 @@ n8n-lead-automation/
 curl -X POST "YOUR_WEBHOOK_URL" \
   -H "Content-Type: application/json" \
   -d '{"name":"Test User","email":"test@example.com","source":"API Test"}'
+```
+
+### PowerShell
+```powershell
+Invoke-RestMethod -Uri "YOUR_WEBHOOK_URL" -Method POST -ContentType "application/json" -Body '{"name":"Test User","email":"test@example.com","source":"PowerShell Test"}'
 ```
 
 ### Full Test Suite
@@ -178,6 +238,18 @@ See `docs/TESTING.md` for comprehensive test scenarios.
 | [SETUP.md](docs/SETUP.md) | Step-by-step setup guide |
 | [TESTING.md](docs/TESTING.md) | Test cases & debugging |
 | [curl-commands.md](examples/curl-commands.md) | Ready-to-use API tests |
+
+---
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Workflow not responding | Ensure workflow is toggled ON |
+| Google Sheets error | Re-select spreadsheet in node |
+| Airtable empty fields | Enable Typecast option |
+| Airtable field error | Change fields to Single line text |
+| 400 validation error | Check name and email are provided |
 
 ---
 
